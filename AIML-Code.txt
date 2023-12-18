@@ -1,0 +1,1081 @@
+# %% [markdown]
+# Loading and understanding the data - Preparing to select columns as predictors.
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:47.722389Z","iopub.execute_input":"2023-03-26T20:45:47.722838Z","iopub.status.idle":"2023-03-26T20:45:50.092518Z","shell.execute_reply.started":"2023-03-26T20:45:47.722785Z","shell.execute_reply":"2023-03-26T20:45:50.091280Z"}}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.ensemble import VotingClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression 
+from sklearn import tree
+from sklearn.tree import DecisionTreeClassifier 
+from sklearn.ensemble import BaggingClassifier
+from sklearn.metrics import plot_confusion_matrix
+from sklearn.model_selection import GridSearchCV
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import metrics
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import cross_val_score, learning_curve, validation_curve
+import sklearn.model_selection as model_selection
+from sklearn.cluster import KMeans
+from yellowbrick.cluster import SilhouetteVisualizer 
+from yellowbrick.cluster import KElbowVisualizer
+import seaborn as sns
+from sklearn.preprocessing import OrdinalEncoder
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:50.094443Z","iopub.execute_input":"2023-03-26T20:45:50.094832Z","iopub.status.idle":"2023-03-26T20:45:50.766738Z","shell.execute_reply.started":"2023-03-26T20:45:50.094781Z","shell.execute_reply":"2023-03-26T20:45:50.765446Z"}}
+new_coder_survey = pd.read_csv("/kaggle/input/2021-new-coder-survey/2021 New Coder Survey.csv")
+new_coder_survey.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:50.768364Z","iopub.execute_input":"2023-03-26T20:45:50.769209Z","iopub.status.idle":"2023-03-26T20:45:50.779168Z","shell.execute_reply.started":"2023-03-26T20:45:50.769158Z","shell.execute_reply":"2023-03-26T20:45:50.777783Z"}}
+new_coder_survey.columns
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:50.782051Z","iopub.execute_input":"2023-03-26T20:45:50.783337Z","iopub.status.idle":"2023-03-26T20:45:50.865202Z","shell.execute_reply.started":"2023-03-26T20:45:50.783295Z","shell.execute_reply":"2023-03-26T20:45:50.863860Z"}}
+new_coder_survey.info()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:50.866858Z","iopub.execute_input":"2023-03-26T20:45:50.867332Z","iopub.status.idle":"2023-03-26T20:45:50.876346Z","shell.execute_reply.started":"2023-03-26T20:45:50.867282Z","shell.execute_reply":"2023-03-26T20:45:50.875171Z"}}
+new_coder_survey.keys()
+
+# %% [markdown]
+# Selecting my predictors and Target is Income
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:50.877635Z","iopub.execute_input":"2023-03-26T20:45:50.877995Z","iopub.status.idle":"2023-03-26T20:45:50.916461Z","shell.execute_reply.started":"2023-03-26T20:45:50.877962Z","shell.execute_reply":"2023-03-26T20:45:50.915050Z"}}
+df = pd.DataFrame(columns=['Hours_Learning','Months_Programming','Age','Relocate','Race','Area','Education_Level','Income'])
+df['Hours_Learning'] = new_coder_survey.iloc[:, 7] 
+df['Months_Programming'] = new_coder_survey.iloc[:, 8] 
+df['Relocate'] = new_coder_survey.iloc[:, 19] 
+df['Age'] = new_coder_survey.iloc[:, 23] 
+df['Race'] = new_coder_survey.iloc[:, 25] 
+df['Area'] = new_coder_survey.iloc[:, 26] 
+df['Education_Level'] = new_coder_survey.iloc[:, 32] 
+df['Income'] = new_coder_survey.iloc[:, 22]    
+df.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:50.918196Z","iopub.execute_input":"2023-03-26T20:45:50.918603Z","iopub.status.idle":"2023-03-26T20:45:50.927263Z","shell.execute_reply.started":"2023-03-26T20:45:50.918567Z","shell.execute_reply":"2023-03-26T20:45:50.925887Z"}}
+print("Total Rows: ",len(df.index))
+
+# %% [markdown]
+# Understanding Income distribution
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:50.929311Z","iopub.execute_input":"2023-03-26T20:45:50.930074Z","iopub.status.idle":"2023-03-26T20:45:51.784291Z","shell.execute_reply.started":"2023-03-26T20:45:50.930022Z","shell.execute_reply":"2023-03-26T20:45:51.783016Z"}}
+sns.countplot(y=df['Income'], data=new_coder_survey, order =df['Income'].value_counts(ascending=False).index)
+plt.xlabel("count")
+plt.ylabel("income")
+plt.show()
+
+# %% [markdown]
+# Data Preparation & Cleaning - Transforming target variable into two classes
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:51.785723Z","iopub.execute_input":"2023-03-26T20:45:51.786176Z","iopub.status.idle":"2023-03-26T20:45:51.794476Z","shell.execute_reply.started":"2023-03-26T20:45:51.786140Z","shell.execute_reply":"2023-03-26T20:45:51.793235Z"}}
+df["Income"].unique()
+
+# %% [markdown]
+# replacing NaN with the mode of the data.
+
+# %% [markdown]
+# Removing missing values
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:51.799023Z","iopub.execute_input":"2023-03-26T20:45:51.799503Z","iopub.status.idle":"2023-03-26T20:45:51.826849Z","shell.execute_reply.started":"2023-03-26T20:45:51.799455Z","shell.execute_reply":"2023-03-26T20:45:51.825066Z"}}
+print(df["Income"].mode()[0])
+df["Income"].fillna('None', inplace=True)
+df.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:51.830181Z","iopub.execute_input":"2023-03-26T20:45:51.830733Z","iopub.status.idle":"2023-03-26T20:45:51.847069Z","shell.execute_reply.started":"2023-03-26T20:45:51.830677Z","shell.execute_reply":"2023-03-26T20:45:51.845517Z"}}
+df = df[df["Income"] != 'I don’t know']
+print(df["Income"].unique())
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:51.849389Z","iopub.execute_input":"2023-03-26T20:45:51.849884Z","iopub.status.idle":"2023-03-26T20:45:51.862603Z","shell.execute_reply.started":"2023-03-26T20:45:51.849834Z","shell.execute_reply":"2023-03-26T20:45:51.861391Z"}}
+df = df[df["Income"] != "I don't want to answer"]
+print(df["Income"].unique())
+
+# %% [markdown]
+# replacing none with under 1000
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:51.864148Z","iopub.execute_input":"2023-03-26T20:45:51.864508Z","iopub.status.idle":"2023-03-26T20:45:51.880028Z","shell.execute_reply.started":"2023-03-26T20:45:51.864463Z","shell.execute_reply":"2023-03-26T20:45:51.878770Z"}}
+df["Income"] = df["Income"].replace('None','Under $1,000')
+print(df["Income"].unique())
+
+# %% [markdown]
+# Ordinal-encoding Income
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:51.881868Z","iopub.execute_input":"2023-03-26T20:45:51.882245Z","iopub.status.idle":"2023-03-26T20:45:51.920255Z","shell.execute_reply.started":"2023-03-26T20:45:51.882209Z","shell.execute_reply":"2023-03-26T20:45:51.918774Z"}}
+income_level_order = [[
+                       'Under $1,000',
+                       '$1,000 to $2,999',
+                       '$3,000 to $4,999',
+                       '$5,000 to $6,999', 
+                       '$7,000 to $9,999',
+                       '$10,000 to $14,999',
+                       '$15,000 to $19,999',
+                       '$20,000 to $24,999',
+                       '$25,000 to $29,999',
+                       '$30,000 to $34,999', 
+                       '$35,000 to $39,999',
+                       '$40,000 to $49,999',
+                       '$50,000 to $59,999',
+                       '$60,000 to $74,999',
+                       '$75,000 to $89,999',
+                       '$90,000 to $119,999',
+                       '$120,000 to $159,999',
+                       '$160,000 to $199,999', 
+                       '$200,000 to $249,999',
+                       '$250,000 or over',]] 
+
+encoder = OrdinalEncoder(categories = income_level_order)  
+df['IncomeLevel'] = encoder.fit_transform(df[['Income']])
+df
+
+# %% [markdown]
+# Visualize Income in levels
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:51.921680Z","iopub.execute_input":"2023-03-26T20:45:51.922062Z","iopub.status.idle":"2023-03-26T20:45:52.287131Z","shell.execute_reply.started":"2023-03-26T20:45:51.922024Z","shell.execute_reply":"2023-03-26T20:45:52.285964Z"}}
+sns.countplot(y='IncomeLevel', data=df)
+
+# %% [markdown]
+# New High Income variable if Income over $29,999 (9) then you are considered high income.
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.288849Z","iopub.execute_input":"2023-03-26T20:45:52.289226Z","iopub.status.idle":"2023-03-26T20:45:52.317709Z","shell.execute_reply.started":"2023-03-26T20:45:52.289189Z","shell.execute_reply":"2023-03-26T20:45:52.316561Z"}}
+df['HighIncome'] = df['IncomeLevel'].apply(lambda x:0 if x < 9 else 1)
+df.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.319459Z","iopub.execute_input":"2023-03-26T20:45:52.319800Z","iopub.status.idle":"2023-03-26T20:45:52.344760Z","shell.execute_reply.started":"2023-03-26T20:45:52.319767Z","shell.execute_reply":"2023-03-26T20:45:52.343182Z"}}
+df.isna().sum()
+
+# %% [markdown]
+# Cleaning and preparing Hours_learning
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.346678Z","iopub.execute_input":"2023-03-26T20:45:52.347111Z","iopub.status.idle":"2023-03-26T20:45:52.356494Z","shell.execute_reply.started":"2023-03-26T20:45:52.347069Z","shell.execute_reply":"2023-03-26T20:45:52.355345Z"}}
+df["Hours_Learning"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.358138Z","iopub.execute_input":"2023-03-26T20:45:52.358795Z","iopub.status.idle":"2023-03-26T20:45:52.373225Z","shell.execute_reply.started":"2023-03-26T20:45:52.358749Z","shell.execute_reply":"2023-03-26T20:45:52.371747Z"}}
+df["Hours_Learning"].isnull().sum()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.374956Z","iopub.execute_input":"2023-03-26T20:45:52.375345Z","iopub.status.idle":"2023-03-26T20:45:52.389083Z","shell.execute_reply.started":"2023-03-26T20:45:52.375310Z","shell.execute_reply":"2023-03-26T20:45:52.387790Z"}}
+df["Hours_Learning"].max()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.390996Z","iopub.execute_input":"2023-03-26T20:45:52.392263Z","iopub.status.idle":"2023-03-26T20:45:52.698230Z","shell.execute_reply.started":"2023-03-26T20:45:52.392203Z","shell.execute_reply":"2023-03-26T20:45:52.697009Z"}}
+df['Hours_Learning'].plot(kind='box', title= 'Hours Learning plot')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.699916Z","iopub.execute_input":"2023-03-26T20:45:52.700274Z","iopub.status.idle":"2023-03-26T20:45:52.709284Z","shell.execute_reply.started":"2023-03-26T20:45:52.700240Z","shell.execute_reply":"2023-03-26T20:45:52.708059Z"}}
+print(df['Hours_Learning'].quantile([0.25, 0.5, 0.75]))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.711214Z","iopub.execute_input":"2023-03-26T20:45:52.711745Z","iopub.status.idle":"2023-03-26T20:45:52.730265Z","shell.execute_reply.started":"2023-03-26T20:45:52.711710Z","shell.execute_reply":"2023-03-26T20:45:52.728906Z"}}
+Q1 = df['Hours_Learning'].quantile(0.25)
+Q3 = df['Hours_Learning'].quantile(0.75)
+IQR = Q3-Q1
+Outliers = df[(df['Hours_Learning']>(Q3+1.5*IQR))|(df['Hours_Learning']<(Q1-1.5*IQR))]
+print(Outliers['Hours_Learning'])
+
+# %% [markdown]
+# Average sleep time is 7-9 hours if we take the lower bout of 7 hours that equates to 49 hours of sleep per week. Hence the max hours any human can do work a week is 101. As a result i will be replacing all values above this value.
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.732508Z","iopub.execute_input":"2023-03-26T20:45:52.733088Z","iopub.status.idle":"2023-03-26T20:45:52.750869Z","shell.execute_reply.started":"2023-03-26T20:45:52.733041Z","shell.execute_reply":"2023-03-26T20:45:52.749600Z"}}
+median = df["Hours_Learning"].median()
+for x in df["Hours_Learning"]:
+    if x > 101:
+        df["Hours_Learning"] = df["Hours_Learning"].replace(x, median)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.752671Z","iopub.execute_input":"2023-03-26T20:45:52.753038Z","iopub.status.idle":"2023-03-26T20:45:52.775361Z","shell.execute_reply.started":"2023-03-26T20:45:52.753003Z","shell.execute_reply":"2023-03-26T20:45:52.773867Z"}}
+median = df["Hours_Learning"].median()
+df["Hours_Learning"].fillna(median, inplace=True)
+df.head()
+
+# %% [markdown]
+# Preparing and cleaningn the Months programming column.
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.776695Z","iopub.execute_input":"2023-03-26T20:45:52.777071Z","iopub.status.idle":"2023-03-26T20:45:52.787342Z","shell.execute_reply.started":"2023-03-26T20:45:52.777036Z","shell.execute_reply":"2023-03-26T20:45:52.786042Z"}}
+df["Months_Programming"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.788950Z","iopub.execute_input":"2023-03-26T20:45:52.789438Z","iopub.status.idle":"2023-03-26T20:45:52.803107Z","shell.execute_reply.started":"2023-03-26T20:45:52.789375Z","shell.execute_reply":"2023-03-26T20:45:52.801714Z"}}
+df["Months_Programming"].isnull()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.814437Z","iopub.execute_input":"2023-03-26T20:45:52.814901Z","iopub.status.idle":"2023-03-26T20:45:52.824690Z","shell.execute_reply.started":"2023-03-26T20:45:52.814854Z","shell.execute_reply":"2023-03-26T20:45:52.823307Z"}}
+df["Months_Programming"].isnull().sum()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.826376Z","iopub.execute_input":"2023-03-26T20:45:52.826847Z","iopub.status.idle":"2023-03-26T20:45:52.858742Z","shell.execute_reply.started":"2023-03-26T20:45:52.826783Z","shell.execute_reply":"2023-03-26T20:45:52.857866Z"}}
+df.Months_Programming = pd.to_numeric(df.Months_Programming, errors='coerce').fillna(0)
+df.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.860165Z","iopub.execute_input":"2023-03-26T20:45:52.860517Z","iopub.status.idle":"2023-03-26T20:45:52.869483Z","shell.execute_reply.started":"2023-03-26T20:45:52.860486Z","shell.execute_reply":"2023-03-26T20:45:52.868430Z"}}
+df['Months_Programming'].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:52.871049Z","iopub.execute_input":"2023-03-26T20:45:52.872010Z","iopub.status.idle":"2023-03-26T20:45:53.118660Z","shell.execute_reply.started":"2023-03-26T20:45:52.871970Z","shell.execute_reply":"2023-03-26T20:45:53.117822Z"}}
+df["Months_Programming"].plot(kind='box', title= 'Months Programming plot')
+
+# %% [markdown]
+# Need to replace the outlier, 1.0000e+41
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.119949Z","iopub.execute_input":"2023-03-26T20:45:53.120489Z","iopub.status.idle":"2023-03-26T20:45:53.133778Z","shell.execute_reply.started":"2023-03-26T20:45:53.120454Z","shell.execute_reply":"2023-03-26T20:45:53.132531Z"}}
+median = df["Months_Programming"].median().astype(np.float64)
+for x in df["Months_Programming"]:
+    if x > 647:
+        df["Months_Programming"] = df["Months_Programming"].replace(x, median)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.138115Z","iopub.execute_input":"2023-03-26T20:45:53.138513Z","iopub.status.idle":"2023-03-26T20:45:53.462196Z","shell.execute_reply.started":"2023-03-26T20:45:53.138479Z","shell.execute_reply":"2023-03-26T20:45:53.460926Z"}}
+df["Months_Programming"].plot(kind='box', title= 'Months Programming plot')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.463836Z","iopub.execute_input":"2023-03-26T20:45:53.464583Z","iopub.status.idle":"2023-03-26T20:45:53.473052Z","shell.execute_reply.started":"2023-03-26T20:45:53.464535Z","shell.execute_reply":"2023-03-26T20:45:53.471903Z"}}
+df["Months_Programming"].max()
+
+# %% [markdown]
+# Cleaning and preparing age
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.474694Z","iopub.execute_input":"2023-03-26T20:45:53.475464Z","iopub.status.idle":"2023-03-26T20:45:53.488779Z","shell.execute_reply.started":"2023-03-26T20:45:53.475369Z","shell.execute_reply":"2023-03-26T20:45:53.487379Z"}}
+df["Age"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.492517Z","iopub.execute_input":"2023-03-26T20:45:53.492907Z","iopub.status.idle":"2023-03-26T20:45:53.504564Z","shell.execute_reply.started":"2023-03-26T20:45:53.492869Z","shell.execute_reply":"2023-03-26T20:45:53.503290Z"}}
+df["Age"].isnull().sum()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.506105Z","iopub.execute_input":"2023-03-26T20:45:53.506844Z","iopub.status.idle":"2023-03-26T20:45:53.533140Z","shell.execute_reply.started":"2023-03-26T20:45:53.506778Z","shell.execute_reply":"2023-03-26T20:45:53.531900Z"}}
+median = df["Age"].median()
+df["Age"].fillna(median, inplace=True)
+df.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.534705Z","iopub.execute_input":"2023-03-26T20:45:53.535489Z","iopub.status.idle":"2023-03-26T20:45:53.706021Z","shell.execute_reply.started":"2023-03-26T20:45:53.535442Z","shell.execute_reply":"2023-03-26T20:45:53.704717Z"}}
+df["Age"].plot(kind='box', title= 'Age plot')
+
+# %% [markdown]
+# Removing Some of the outliers over 84
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.707867Z","iopub.execute_input":"2023-03-26T20:45:53.708636Z","iopub.status.idle":"2023-03-26T20:45:53.720057Z","shell.execute_reply.started":"2023-03-26T20:45:53.708584Z","shell.execute_reply":"2023-03-26T20:45:53.718779Z"}}
+wrong_ages = [100,99,95,89,120,88,84,82,83,80]
+for i in wrong_ages:
+    df['Age'] = df['Age'].replace(i, median)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.722667Z","iopub.execute_input":"2023-03-26T20:45:53.723177Z","iopub.status.idle":"2023-03-26T20:45:53.733857Z","shell.execute_reply.started":"2023-03-26T20:45:53.723126Z","shell.execute_reply":"2023-03-26T20:45:53.732648Z"}}
+df["Age"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.735535Z","iopub.execute_input":"2023-03-26T20:45:53.736133Z","iopub.status.idle":"2023-03-26T20:45:53.922542Z","shell.execute_reply.started":"2023-03-26T20:45:53.736083Z","shell.execute_reply":"2023-03-26T20:45:53.921111Z"}}
+df["Age"].plot(kind='box', title= 'Age plot')
+
+# %% [markdown]
+# Will accept rest of outliers as takes in age
+
+# %% [markdown]
+# Preparing and cleaning Education_Level
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.924386Z","iopub.execute_input":"2023-03-26T20:45:53.925787Z","iopub.status.idle":"2023-03-26T20:45:53.936140Z","shell.execute_reply.started":"2023-03-26T20:45:53.925731Z","shell.execute_reply":"2023-03-26T20:45:53.934774Z"}}
+df["Education_Level"]. unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.937476Z","iopub.execute_input":"2023-03-26T20:45:53.938266Z","iopub.status.idle":"2023-03-26T20:45:53.958694Z","shell.execute_reply.started":"2023-03-26T20:45:53.938217Z","shell.execute_reply":"2023-03-26T20:45:53.957264Z"}}
+mode = df["Education_Level"]. mode()
+df["Education_Level"].fillna(mode[0], inplace=True)
+df["Education_Level"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.960341Z","iopub.execute_input":"2023-03-26T20:45:53.961402Z","iopub.status.idle":"2023-03-26T20:45:53.976203Z","shell.execute_reply.started":"2023-03-26T20:45:53.961360Z","shell.execute_reply":"2023-03-26T20:45:53.975079Z"}}
+incorrect_val = 27.081495040151157
+df["Education_Level"] = df["Education_Level"].replace(incorrect_val, mode[0])
+df["Education_Level"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.978214Z","iopub.execute_input":"2023-03-26T20:45:53.979033Z","iopub.status.idle":"2023-03-26T20:45:53.989408Z","shell.execute_reply.started":"2023-03-26T20:45:53.978982Z","shell.execute_reply":"2023-03-26T20:45:53.988267Z"}}
+df['Education_Level'] = df['Education_Level'].replace('Some high school',  'No high school (secondary school)')
+df['Education_Level'] = df['Education_Level'].replace('Some college credit, no degree', 'High school diploma or equivalent (GED)')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:53.990926Z","iopub.execute_input":"2023-03-26T20:45:53.992032Z","iopub.status.idle":"2023-03-26T20:45:54.018152Z","shell.execute_reply.started":"2023-03-26T20:45:53.991981Z","shell.execute_reply":"2023-03-26T20:45:54.016801Z"}}
+df.head(12)
+
+# %% [markdown]
+# Cleaning and preparing Area
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.019455Z","iopub.execute_input":"2023-03-26T20:45:54.019854Z","iopub.status.idle":"2023-03-26T20:45:54.038499Z","shell.execute_reply.started":"2023-03-26T20:45:54.019799Z","shell.execute_reply":"2023-03-26T20:45:54.037499Z"}}
+df['Area'].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.039953Z","iopub.execute_input":"2023-03-26T20:45:54.040545Z","iopub.status.idle":"2023-03-26T20:45:54.058191Z","shell.execute_reply.started":"2023-03-26T20:45:54.040508Z","shell.execute_reply":"2023-03-26T20:45:54.057170Z"}}
+mode = df["Area"]. mode()
+df["Area"].fillna(mode[0], inplace=True)
+df["Area"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.059644Z","iopub.execute_input":"2023-03-26T20:45:54.060761Z","iopub.status.idle":"2023-03-26T20:45:54.073228Z","shell.execute_reply.started":"2023-03-26T20:45:54.060724Z","shell.execute_reply":"2023-03-26T20:45:54.072259Z"}}
+df["Area"] = df["Area"].replace(incorrect_val, mode[0])
+df["Area"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.074509Z","iopub.execute_input":"2023-03-26T20:45:54.074829Z","iopub.status.idle":"2023-03-26T20:45:54.098639Z","shell.execute_reply.started":"2023-03-26T20:45:54.074785Z","shell.execute_reply":"2023-03-26T20:45:54.097748Z"}}
+df.head(12)
+
+# %% [markdown]
+# Cleaning and preparing Relocate
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.099961Z","iopub.execute_input":"2023-03-26T20:45:54.100736Z","iopub.status.idle":"2023-03-26T20:45:54.111232Z","shell.execute_reply.started":"2023-03-26T20:45:54.100701Z","shell.execute_reply":"2023-03-26T20:45:54.109865Z"}}
+df['Relocate'].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.112873Z","iopub.execute_input":"2023-03-26T20:45:54.114129Z","iopub.status.idle":"2023-03-26T20:45:54.129704Z","shell.execute_reply.started":"2023-03-26T20:45:54.114087Z","shell.execute_reply":"2023-03-26T20:45:54.128221Z"}}
+mode = df['Relocate']. mode()
+df['Relocate'].fillna(mode[0], inplace=True)
+df['Relocate'].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.131984Z","iopub.execute_input":"2023-03-26T20:45:54.133253Z","iopub.status.idle":"2023-03-26T20:45:54.151867Z","shell.execute_reply.started":"2023-03-26T20:45:54.133201Z","shell.execute_reply":"2023-03-26T20:45:54.150507Z"}}
+incorrect_val = 'I am not interested in a software development career'
+df["Relocate"] = df["Relocate"].replace(incorrect_val, mode[0])
+df['Relocate'].unique()
+
+# %% [markdown]
+# Preparing and cleaning Race
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.153108Z","iopub.execute_input":"2023-03-26T20:45:54.153756Z","iopub.status.idle":"2023-03-26T20:45:54.166090Z","shell.execute_reply.started":"2023-03-26T20:45:54.153720Z","shell.execute_reply":"2023-03-26T20:45:54.164618Z"}}
+df['Race'].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.167861Z","iopub.execute_input":"2023-03-26T20:45:54.168218Z","iopub.status.idle":"2023-03-26T20:45:54.177939Z","shell.execute_reply.started":"2023-03-26T20:45:54.168184Z","shell.execute_reply":"2023-03-26T20:45:54.176175Z"}}
+#df["Race"].info()
+df["Race"].nunique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.180101Z","iopub.execute_input":"2023-03-26T20:45:54.180516Z","iopub.status.idle":"2023-03-26T20:45:54.192303Z","shell.execute_reply.started":"2023-03-26T20:45:54.180479Z","shell.execute_reply":"2023-03-26T20:45:54.191215Z"}}
+mode = df["Race"].mode()
+print(mode)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.194024Z","iopub.execute_input":"2023-03-26T20:45:54.194409Z","iopub.status.idle":"2023-03-26T20:45:54.326860Z","shell.execute_reply.started":"2023-03-26T20:45:54.194361Z","shell.execute_reply":"2023-03-26T20:45:54.325679Z"}}
+incorrect_vals = ['mut',
+'A person',
+'None of them. I do not find ethnicity as a suitiable label for myself.',
+"I don't identify with this idea, may the future hurry and get here now. ",
+'Is this even necessary?',
+'definerace',
+"I don't identify with any group.",
+'Antifa',
+'Not any particular group',
+'I have not met different people so I can not form an opinion on that matter',
+'equally',
+"I'd rather not :-)",
+'Fuck off',
+'Decline to State',
+"I really don't care for this type of grouping ",
+"don't matter",
+'Perfer not to say',
+'Prefer not to answer ',
+'thats loaded, i live in a rural community, i identify as a free thinking individual limited by societals perception of me.',
+'Huwy',
+'Earthling',
+'IDK. IDC.',
+"You cannot chose your race, therefor race is not an 'identity'. The premise that this question is based on, is overtly delusional. Questions like this promote a worldview of persecution for whites, Jews and Christians.",
+'Human (this kind of questions are too racist)',
+'let me be just human',
+"It doesn't matter...",
+'ugh! I hate this question!',
+'None',
+"That's one hell of a stupid question IMO.",
+'any',
+'Cyborg',
+'узбекистан',
+ 'None, every human being is an individual, races should not matter!',
+'My ARN is Modernazed I have mushrooms on my skin.',
+'a man from earth <3',
+'Skin color does not matter',
+'Prefer not say',
+'no respondo',
+'i am just a human',
+'Person',
+'i do not think this is relevant. ',
+'Ninja',
+'none of those, I identify myself as a "person" like any other person in the world.',
+"as a sociologist i'm surprised this is how this question is framed",
+'Non-racist',
+'None of your business',
+'I despise this whole grouping people into races.',
+'Wtf?!',
+"Don't think of myself in these ethnic labels",
+'why does this matter?',
+'a human',
+'person',
+'? why should this be important',
+'is this important ?',
+'people are equal, that is why i prefer not to say or group myself in any kind of race',
+"doesn't matter",
+'Homo Sapien',
+"Don't really care about it nor fit any of these.",
+'Na',
+'dont ask personal info',
+'I dont really know',
+'I found no difference of groups... I like to work with all of them!  ',
+'Chestnut-Espresso',
+'None, white is far too limiting. I am from Europe we are all white, but very culturally diverse',
+'As a human being, a good one.',
+'prefer not to say',
+"Don't Identify",
+'Human Being',
+'none ',
+'?',
+'Ni',
+'Earth born',
+'WTF ',
+'Prefer NOt to say',
+'This isnt a good question, i identify myself as flying turtle',
+'I don\'t "identify" myself by "race".',
+'not applicable',
+'strange question. I primarily identify as a human.',
+'Alien',27.081495040151157,'With anyone', 'human', 'Human ','Human.',
+'Humanbeing','racist question', 'Human','Prefer not to say','people',
+'none','Homo Sapiens', 'earthlings \U0001fa90','alien','Idk', 'why is that relevant?',
+'Nunya','Pop-Tartian or Snickers Barrian','Human being','A person.','crocodile','Atomic Submarine',
+'any nationality', 'Jedi','Jewish/Christian.', 'jewish minorities'
+, 'Jew', 'Jewish','Human species']
+
+for i in incorrect_vals:
+    df['Race'] = df['Race'].replace(i, mode[0])
+    
+df["Race"].nunique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.328250Z","iopub.execute_input":"2023-03-26T20:45:54.328597Z","iopub.status.idle":"2023-03-26T20:45:54.336847Z","shell.execute_reply.started":"2023-03-26T20:45:54.328564Z","shell.execute_reply":"2023-03-26T20:45:54.335488Z"}}
+df["Race"].fillna(mode[0], inplace=True)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.338558Z","iopub.execute_input":"2023-03-26T20:45:54.339040Z","iopub.status.idle":"2023-03-26T20:45:54.454647Z","shell.execute_reply.started":"2023-03-26T20:45:54.338987Z","shell.execute_reply":"2023-03-26T20:45:54.453446Z"}}
+df.loc[df['Race'].str.contains('biracial', case=False), 'Race'] = 'Mixed Race'
+df.loc[df['Race'].str.contains('mix', case=False), 'Race'] = 'Mixed Race'
+df.loc[df['Race'].str.contains('half', case=False), 'Race'] = 'Mixed Race'
+df.loc[df['Race'].str.contains('and', case=False), 'Race'] = 'Mixed Race'
+df.loc[df['Race'].str.contains('two', case=False), 'Race'] = 'Mixed Race'
+df.loc[df['Race'].str.contains('multi', case=False), 'Race'] = 'Mixed Race'
+df.loc[df['Race'].str.contains('all', case=False), 'Race'] = 'Mixed Race'
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.455826Z","iopub.execute_input":"2023-03-26T20:45:54.456184Z","iopub.status.idle":"2023-03-26T20:45:54.530168Z","shell.execute_reply.started":"2023-03-26T20:45:54.456151Z","shell.execute_reply":"2023-03-26T20:45:54.528978Z"}}
+df.loc[df['Race'].str.contains('Hispanic', case=False), 'Race'] = 'Hispanic/Latino(a/x)'
+df.loc[df['Race'].str.contains('Latina', case=False), 'Race'] = 'Hispanic/Latino(a/x)'
+df.loc[df['Race'].str.contains('Latino', case=False), 'Race'] = 'Hispanic/Latino(a/x)'
+df.loc[df['Race'].str.contains('South America', case=False), 'Race'] = 'Hispanic/Latino(a/x)'
+df.loc[df['Race'].str.contains('South American', case=False), 'Race'] = 'Hispanic/Latino(a/x)'
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.531447Z","iopub.execute_input":"2023-03-26T20:45:54.531784Z","iopub.status.idle":"2023-03-26T20:45:54.623976Z","shell.execute_reply.started":"2023-03-26T20:45:54.531752Z","shell.execute_reply":"2023-03-26T20:45:54.622536Z"}}
+df.loc[df['Race'].str.contains('black', case=False), 'Race'] = 'Black/African American'
+df.loc[df['Race'].str.contains('Nigeria', case=False), 'Race'] = 'Black/African American'
+df.loc[df['Race'].str.contains('Africa', case=False), 'Race'] = 'Black/African American'
+df.loc[df['Race'].str.contains('Color', case=False), 'Race'] = 'Black/African American'
+df.loc[df['Race'].str.contains('Caribbean', case=False), 'Race'] = 'Black/African American'
+df.loc[df['Race'].str.contains('Afrolatin', case=False), 'Race'] = 'Black/African American'
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.625862Z","iopub.execute_input":"2023-03-26T20:45:54.626233Z","iopub.status.idle":"2023-03-26T20:45:54.692557Z","shell.execute_reply.started":"2023-03-26T20:45:54.626198Z","shell.execute_reply":"2023-03-26T20:45:54.691374Z"}}
+df.loc[df['Race'].str.contains('white', case=False), 'Race'] = 'White'
+df.loc[df['Race'].str.contains('Slavic', case=False), 'Race'] = 'White'
+df.loc[df['Race'].str.contains('Europe', case=False), 'Race'] = 'White'
+df.loc[df['Race'].str.contains('English', case=False), 'Race'] = 'White'
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.693810Z","iopub.execute_input":"2023-03-26T20:45:54.694166Z","iopub.status.idle":"2023-03-26T20:45:54.786265Z","shell.execute_reply.started":"2023-03-26T20:45:54.694132Z","shell.execute_reply":"2023-03-26T20:45:54.785267Z"}}
+df.loc[df['Race'].str.contains('Asia', case=False), 'Race'] = 'Asian'
+df.loc[df['Race'].str.contains('Asian', case=False), 'Race'] = 'Asian'
+df.loc[df['Race'].str.contains('Indian', case=False), 'Race'] = 'Asian'
+df.loc[df['Race'].str.contains('India', case=False), 'Race'] = 'Asian'
+df.loc[df['Race'].str.contains('Japanese', case=False), 'Race'] = 'Asian'
+df.loc[df['Race'].str.contains('Korean', case=False), 'Race'] = 'Asian'
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.787425Z","iopub.execute_input":"2023-03-26T20:45:54.788489Z","iopub.status.idle":"2023-03-26T20:45:54.873929Z","shell.execute_reply.started":"2023-03-26T20:45:54.788452Z","shell.execute_reply":"2023-03-26T20:45:54.872228Z"}}
+others =[ 'Turk', 'NZ Maori', 'Mediterranean',
+       'brown', 'Greek', 'Native American- Dine', 'Mestizo',
+       'Кавказ', 
+       'Anatolian (Turk)', 'Armenian', 'brasilian',
+       'Polynesian', 'Turkish',
+       ' Parda ',
+       'Although I am dark or brown by skin colour, I wish this question was asked based on countries',
+       'Moorish American', 
+       "greek I don't know which one of these a greek is",
+       'Basque', 'Silesian', 'Coloured', 'arab', 
+       'mammalian', 'brazilian', 'parda',
+       'Swede', 
+       'I am from Nepal.', 'coloured ', 'dutch', 'Brazilian', 'Slav',
+       'Gypsish',
+       'The Norsemen',
+       'turkish', 'Klingon', 'Argentino <3',
+       'Israeli', 'pardo', 'belarussian',
+       'coloured', 'Iberian',
+       'North Eastern', 'Melanesia', 'Uto-aztecan', 'Surinamese',
+       'Kurdish / Kurdistani', 'Hawaiian',
+       'Anatolian', 'Caucasus',
+       'Middle Eastern', 'Kurdish',
+       'Hawaiian/Okinawan', 'Melungeon',
+       'Maori', 'Melanisian', 'Turkic', 'suramericana', 'Panama Native',
+       'Native American', 'Irish', 'international', 'Circassian ',
+       'latin american', 'Gypsy', 'Parda', 'Samoan ',
+       'greek',
+       'Native Hawaiian', 'Sri Lankan Aussie', 'Moroccan ',
+       'indigenous ', 'Brown','Pardo','Earth', 'excuse me?']
+
+for i in others:
+    df['Race'] = df['Race'].replace(i, 'Other')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.875553Z","iopub.execute_input":"2023-03-26T20:45:54.875981Z","iopub.status.idle":"2023-03-26T20:45:54.896016Z","shell.execute_reply.started":"2023-03-26T20:45:54.875940Z","shell.execute_reply":"2023-03-26T20:45:54.894678Z"}}
+Extra_BlackAfrican=['Ethiopian','Kenyan','Affrican','ethiopian','Tunisian', 'kenyan','Bajan', 'Cameroonian','Egyptian', 'Jamaican', 'senegal','Egyptian ']
+
+for i in Extra_BlackAfrican:
+    df['Race'] = df['Race'].replace(i, 'Black/African American')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.897456Z","iopub.execute_input":"2023-03-26T20:45:54.897847Z","iopub.status.idle":"2023-03-26T20:45:54.918075Z","shell.execute_reply.started":"2023-03-26T20:45:54.897787Z","shell.execute_reply":"2023-03-26T20:45:54.916805Z"}}
+Extra_White = ['Eurpean', 'Russia','Irish/German','Celtic, Anglo Saxon with Druidic roots.', 'Russian T-14', 'German', 'Canadian', 'american','Russian','American ','American', 'Australian ']
+
+for i in Extra_White:
+    df['Race'] = df['Race'].replace(i, 'White')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.919577Z","iopub.execute_input":"2023-03-26T20:45:54.920369Z","iopub.status.idle":"2023-03-26T20:45:54.943246Z","shell.execute_reply.started":"2023-03-26T20:45:54.920315Z","shell.execute_reply":"2023-03-26T20:45:54.941724Z"}}
+Extra_Asian =['Chinese','Pakistani','Bangladeshi', 'Pakistan','Sri Lankan','Hongkonger','China',
+'indonesian','chinese', 'Filipino','pakistan','Bangladesh']
+
+for i in Extra_Asian:
+    df['Race'] = df['Race'].replace(i, 'Asian')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.945174Z","iopub.execute_input":"2023-03-26T20:45:54.945716Z","iopub.status.idle":"2023-03-26T20:45:54.960032Z","shell.execute_reply.started":"2023-03-26T20:45:54.945664Z","shell.execute_reply":"2023-03-26T20:45:54.958662Z"}}
+Extra_Mixed_Race = ['bi racial','2 or more races','filipino hawaiian', 'mulitiracial']
+for i in Extra_Mixed_Race:
+    df['Race'] = df['Race'].replace(i, 'Mixed Race')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.961645Z","iopub.execute_input":"2023-03-26T20:45:54.962149Z","iopub.status.idle":"2023-03-26T20:45:54.981395Z","shell.execute_reply.started":"2023-03-26T20:45:54.962094Z","shell.execute_reply":"2023-03-26T20:45:54.980084Z"}}
+Ex_HispanicLatino = ['Im from Argentina','Latin','Mexican American','Puerto Rican', 'mexican']
+for i in Ex_HispanicLatino:
+    df['Race'] = df['Race'].replace(i, 'Hispanic/Latino(a/x)')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.983185Z","iopub.execute_input":"2023-03-26T20:45:54.983865Z","iopub.status.idle":"2023-03-26T20:45:54.997342Z","shell.execute_reply.started":"2023-03-26T20:45:54.983827Z","shell.execute_reply":"2023-03-26T20:45:54.996073Z"}}
+df["Race"].nunique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:54.998559Z","iopub.execute_input":"2023-03-26T20:45:54.998941Z","iopub.status.idle":"2023-03-26T20:45:55.012044Z","shell.execute_reply.started":"2023-03-26T20:45:54.998905Z","shell.execute_reply":"2023-03-26T20:45:55.010511Z"}}
+df["Race"].unique()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:55.013653Z","iopub.execute_input":"2023-03-26T20:45:55.014487Z","iopub.status.idle":"2023-03-26T20:45:55.025734Z","shell.execute_reply.started":"2023-03-26T20:45:55.014445Z","shell.execute_reply":"2023-03-26T20:45:55.024527Z"}}
+len(df.index)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:55.027611Z","iopub.execute_input":"2023-03-26T20:45:55.028099Z","iopub.status.idle":"2023-03-26T20:45:55.052411Z","shell.execute_reply.started":"2023-03-26T20:45:55.028052Z","shell.execute_reply":"2023-03-26T20:45:55.051082Z"}}
+df.head()
+
+# %% [markdown]
+# All columns has now been prepared and cleaned
+
+# %% [markdown]
+# EDA 
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:55.053673Z","iopub.execute_input":"2023-03-26T20:45:55.054014Z","iopub.status.idle":"2023-03-26T20:45:55.226370Z","shell.execute_reply.started":"2023-03-26T20:45:55.053982Z","shell.execute_reply":"2023-03-26T20:45:55.225417Z"}}
+sns.countplot(y='HighIncome', data=df)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:55.227850Z","iopub.execute_input":"2023-03-26T20:45:55.229008Z","iopub.status.idle":"2023-03-26T20:45:55.425991Z","shell.execute_reply.started":"2023-03-26T20:45:55.228920Z","shell.execute_reply":"2023-03-26T20:45:55.424187Z"}}
+df.Relocate.value_counts().plot(kind='pie',autopct='%1.1f%%')
+plt.title('Are You willing to relocate for a job')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:55.428892Z","iopub.execute_input":"2023-03-26T20:45:55.430082Z","iopub.status.idle":"2023-03-26T20:45:55.678934Z","shell.execute_reply.started":"2023-03-26T20:45:55.429988Z","shell.execute_reply":"2023-03-26T20:45:55.677189Z"}}
+df.Race.value_counts().plot(kind='pie',autopct='%1.1f%%', fontsize=8)
+plt.title('With which of these groups do you primarily identify?')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:55.681150Z","iopub.execute_input":"2023-03-26T20:45:55.682588Z","iopub.status.idle":"2023-03-26T20:45:55.963378Z","shell.execute_reply.started":"2023-03-26T20:45:55.682512Z","shell.execute_reply":"2023-03-26T20:45:55.962168Z"}}
+df.Area.value_counts().plot(kind='pie',autopct='%1.1f%%')
+plt.title('Which part of the world do you live in?')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:55.964689Z","iopub.execute_input":"2023-03-26T20:45:55.965108Z","iopub.status.idle":"2023-03-26T20:45:56.252837Z","shell.execute_reply.started":"2023-03-26T20:45:55.965070Z","shell.execute_reply":"2023-03-26T20:45:56.251540Z"}}
+df.Education_Level.value_counts().plot(kind='pie',autopct='%1.1f%%', fontsize=8)
+plt.title('What is the highest level of school you completed?')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:56.254108Z","iopub.execute_input":"2023-03-26T20:45:56.254424Z","iopub.status.idle":"2023-03-26T20:45:56.509134Z","shell.execute_reply.started":"2023-03-26T20:45:56.254385Z","shell.execute_reply":"2023-03-26T20:45:56.507795Z"}}
+df["Months_Programming"].plot(kind='box', title= 'Months Programming plot')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:56.511092Z","iopub.execute_input":"2023-03-26T20:45:56.511567Z","iopub.status.idle":"2023-03-26T20:45:56.752316Z","shell.execute_reply.started":"2023-03-26T20:45:56.511519Z","shell.execute_reply":"2023-03-26T20:45:56.751169Z"}}
+df["Hours_Learning"].plot(kind='box', title= 'Hours Learning plot')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:56.753622Z","iopub.execute_input":"2023-03-26T20:45:56.753983Z","iopub.status.idle":"2023-03-26T20:45:57.031516Z","shell.execute_reply.started":"2023-03-26T20:45:56.753948Z","shell.execute_reply":"2023-03-26T20:45:57.030370Z"}}
+df.Race.value_counts().plot(kind='bar')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:57.047601Z","iopub.execute_input":"2023-03-26T20:45:57.048066Z","iopub.status.idle":"2023-03-26T20:45:57.322648Z","shell.execute_reply.started":"2023-03-26T20:45:57.048024Z","shell.execute_reply":"2023-03-26T20:45:57.321431Z"}}
+Highestincome_race = df.groupby('Race')['HighIncome'].sum()
+Highestincome_race.plot(kind='bar')
+plt.xlabel('Race')
+plt.ylabel('HighIncome')
+plt.title('HighIncome Race')
+plt.show()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:57.323952Z","iopub.execute_input":"2023-03-26T20:45:57.324272Z","iopub.status.idle":"2023-03-26T20:45:57.626723Z","shell.execute_reply.started":"2023-03-26T20:45:57.324242Z","shell.execute_reply":"2023-03-26T20:45:57.625175Z"}}
+Highestincome_edlvl = df.groupby('Education_Level')['HighIncome'].sum()
+Highestincome_edlvl.plot(kind='bar')
+plt.xlabel('Education_Level')
+plt.ylabel('HighIncome')
+plt.title('HighIncome Education Level')
+plt.show()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:57.628701Z","iopub.execute_input":"2023-03-26T20:45:57.629196Z","iopub.status.idle":"2023-03-26T20:45:57.907143Z","shell.execute_reply.started":"2023-03-26T20:45:57.629147Z","shell.execute_reply":"2023-03-26T20:45:57.905970Z"}}
+Highestincome_area = df.groupby('Area')['HighIncome'].sum()
+Highestincome_area.plot(kind='bar')
+plt.xlabel('Area')
+plt.ylabel('HighIncome')
+plt.title('HighIncome Education Level')
+plt.show()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:57.908505Z","iopub.execute_input":"2023-03-26T20:45:57.909603Z","iopub.status.idle":"2023-03-26T20:45:59.473195Z","shell.execute_reply.started":"2023-03-26T20:45:57.909550Z","shell.execute_reply":"2023-03-26T20:45:59.471848Z"}}
+sns.scatterplot(data=df, x="Age", y="Hours_Learning", hue="HighIncome")
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:45:59.474614Z","iopub.execute_input":"2023-03-26T20:45:59.475291Z","iopub.status.idle":"2023-03-26T20:46:00.841437Z","shell.execute_reply.started":"2023-03-26T20:45:59.475254Z","shell.execute_reply":"2023-03-26T20:46:00.840304Z"}}
+sns.scatterplot(data=df, x="Age", y="Months_Programming", hue="HighIncome")
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:00.842918Z","iopub.execute_input":"2023-03-26T20:46:00.843249Z","iopub.status.idle":"2023-03-26T20:46:02.896295Z","shell.execute_reply.started":"2023-03-26T20:46:00.843217Z","shell.execute_reply":"2023-03-26T20:46:02.895113Z"}}
+pd.plotting.scatter_matrix(df.iloc[: ,0:3])
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:02.898108Z","iopub.execute_input":"2023-03-26T20:46:02.899042Z","iopub.status.idle":"2023-03-26T20:46:04.391757Z","shell.execute_reply.started":"2023-03-26T20:46:02.898989Z","shell.execute_reply":"2023-03-26T20:46:04.390157Z"}}
+sns.stripplot(data=df, x="Relocate", y="Age", hue="HighIncome")
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:04.393406Z","iopub.execute_input":"2023-03-26T20:46:04.393843Z","iopub.status.idle":"2023-03-26T20:46:07.221259Z","shell.execute_reply.started":"2023-03-26T20:46:04.393782Z","shell.execute_reply":"2023-03-26T20:46:07.220365Z"}}
+fig, ax=plt.subplots(figsize=(15,8))
+
+df_stack = df.pivot_table(index="Age",
+               columns="Education_Level", 
+               values="Hours_Learning",
+               aggfunc=sum)
+
+df_stack.plot.bar(stacked=True, ax=ax)
+
+plt.xlabel("Age", fontsize=15)
+plt.ylabel("Months_Programming", fontsize=15)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:07.222412Z","iopub.execute_input":"2023-03-26T20:46:07.223227Z","iopub.status.idle":"2023-03-26T20:46:07.241131Z","shell.execute_reply.started":"2023-03-26T20:46:07.223190Z","shell.execute_reply":"2023-03-26T20:46:07.239740Z"}}
+df.isnull().sum()
+
+# %% [markdown]
+# data clustering
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:07.242898Z","iopub.execute_input":"2023-03-26T20:46:07.243455Z","iopub.status.idle":"2023-03-26T20:46:07.258156Z","shell.execute_reply.started":"2023-03-26T20:46:07.243416Z","shell.execute_reply":"2023-03-26T20:46:07.256751Z"}}
+df_cluster1 = df[['Area','Race','IncomeLevel']]
+df_cluster1.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:07.259663Z","iopub.execute_input":"2023-03-26T20:46:07.260715Z","iopub.status.idle":"2023-03-26T20:46:07.289496Z","shell.execute_reply.started":"2023-03-26T20:46:07.260672Z","shell.execute_reply":"2023-03-26T20:46:07.288012Z"}}
+X_cluster = pd.get_dummies(df_cluster1) #OneHot Encoding. 
+X_cluster.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:07.291618Z","iopub.execute_input":"2023-03-26T20:46:07.292483Z","iopub.status.idle":"2023-03-26T20:46:07.298488Z","shell.execute_reply.started":"2023-03-26T20:46:07.292429Z","shell.execute_reply":"2023-03-26T20:46:07.297160Z"}}
+km = KMeans(n_clusters=3)  
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:07.300442Z","iopub.execute_input":"2023-03-26T20:46:07.301300Z","iopub.status.idle":"2023-03-26T20:46:08.713049Z","shell.execute_reply.started":"2023-03-26T20:46:07.301245Z","shell.execute_reply":"2023-03-26T20:46:08.711635Z"}}
+y_cluster = km.fit_predict(X_cluster)
+print(y_cluster[0:9])
+df_cluster1['ClusterLabel'] = y_cluster 
+df_cluster1.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:08.714687Z","iopub.execute_input":"2023-03-26T20:46:08.715365Z","iopub.status.idle":"2023-03-26T20:46:09.097827Z","shell.execute_reply.started":"2023-03-26T20:46:08.715321Z","shell.execute_reply":"2023-03-26T20:46:09.096681Z"}}
+sns.countplot(data=df_cluster1, x="ClusterLabel", hue="Area")
+plt.legend(bbox_to_anchor=(1.0, 1.0))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:09.099116Z","iopub.execute_input":"2023-03-26T20:46:09.099431Z","iopub.status.idle":"2023-03-26T20:46:09.477138Z","shell.execute_reply.started":"2023-03-26T20:46:09.099401Z","shell.execute_reply":"2023-03-26T20:46:09.476001Z"}}
+sns.countplot(data=df_cluster1, x="ClusterLabel", hue="Race")
+plt.legend(bbox_to_anchor=(1.0, 1.0))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:09.478387Z","iopub.execute_input":"2023-03-26T20:46:09.478713Z","iopub.status.idle":"2023-03-26T20:46:10.059783Z","shell.execute_reply.started":"2023-03-26T20:46:09.478681Z","shell.execute_reply":"2023-03-26T20:46:10.057989Z"}}
+sns.countplot(data=df_cluster1, x="ClusterLabel", hue="IncomeLevel")
+plt.legend(bbox_to_anchor=(1.0, 1.0))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:10.061143Z","iopub.execute_input":"2023-03-26T20:46:10.061476Z","iopub.status.idle":"2023-03-26T20:46:21.497168Z","shell.execute_reply.started":"2023-03-26T20:46:10.061445Z","shell.execute_reply":"2023-03-26T20:46:21.495855Z"}}
+# Init KMeans clustering model and visualiser
+model = KMeans()
+visualizer = KElbowVisualizer(model, k=(2,10))
+visualizer.fit(X_cluster)        # Fit the data to the visualiser
+visualizer.show()   
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:21.498772Z","iopub.execute_input":"2023-03-26T20:46:21.499374Z","iopub.status.idle":"2023-03-26T20:46:30.598721Z","shell.execute_reply.started":"2023-03-26T20:46:21.499313Z","shell.execute_reply":"2023-03-26T20:46:30.597398Z"}}
+# 3 clusters
+k=3
+# Init KMeans clustering model and visualiser
+km =  KMeans(k, random_state=1)
+visualizer = SilhouetteVisualizer(km, colors='yellowbrick')
+visualizer.fit(X_cluster)        # Fit the data to the visualiser
+visualizer.show()        # Finalise and render the figure
+print(visualizer.silhouette_score_)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:30.600308Z","iopub.execute_input":"2023-03-26T20:46:30.600662Z","iopub.status.idle":"2023-03-26T20:46:30.615134Z","shell.execute_reply.started":"2023-03-26T20:46:30.600627Z","shell.execute_reply":"2023-03-26T20:46:30.613874Z"}}
+df_cluster2 = df[['Relocate','IncomeLevel']]
+df_cluster2.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:30.616864Z","iopub.execute_input":"2023-03-26T20:46:30.617267Z","iopub.status.idle":"2023-03-26T20:46:30.643082Z","shell.execute_reply.started":"2023-03-26T20:46:30.617228Z","shell.execute_reply":"2023-03-26T20:46:30.641333Z"}}
+X_cluster1 = pd.get_dummies(df_cluster2) #OneHot Encoding. 
+X_cluster1.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:30.644324Z","iopub.execute_input":"2023-03-26T20:46:30.644788Z","iopub.status.idle":"2023-03-26T20:46:30.650630Z","shell.execute_reply.started":"2023-03-26T20:46:30.644740Z","shell.execute_reply":"2023-03-26T20:46:30.649367Z"}}
+km = KMeans(n_clusters=4)  
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:30.653068Z","iopub.execute_input":"2023-03-26T20:46:30.653530Z","iopub.status.idle":"2023-03-26T20:46:31.742347Z","shell.execute_reply.started":"2023-03-26T20:46:30.653476Z","shell.execute_reply":"2023-03-26T20:46:31.741484Z"}}
+y_cluster = km.fit_predict(X_cluster1)
+print(y_cluster[0:13])
+df_cluster2['ClusterLabel'] = y_cluster 
+df_cluster2.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:31.743543Z","iopub.execute_input":"2023-03-26T20:46:31.744610Z","iopub.status.idle":"2023-03-26T20:46:32.063395Z","shell.execute_reply.started":"2023-03-26T20:46:31.744573Z","shell.execute_reply":"2023-03-26T20:46:32.062363Z"}}
+sns.countplot(data=df_cluster2, x="ClusterLabel", hue="Relocate")
+plt.legend(bbox_to_anchor=(1.0, 1.0))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:32.065157Z","iopub.execute_input":"2023-03-26T20:46:32.065521Z","iopub.status.idle":"2023-03-26T20:46:32.947222Z","shell.execute_reply.started":"2023-03-26T20:46:32.065485Z","shell.execute_reply":"2023-03-26T20:46:32.945791Z"}}
+sns.countplot(data=df_cluster2, x="ClusterLabel", hue="IncomeLevel")
+plt.legend(bbox_to_anchor=(1.0, 1.0))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:32.949240Z","iopub.execute_input":"2023-03-26T20:46:32.950127Z","iopub.status.idle":"2023-03-26T20:46:43.157484Z","shell.execute_reply.started":"2023-03-26T20:46:32.950082Z","shell.execute_reply":"2023-03-26T20:46:43.156322Z"}}
+# Init KMeans clustering model and visualiser
+model = KMeans()
+visualizer = KElbowVisualizer(model, k=(2,10))
+visualizer.fit(X_cluster1)        # Fit the data to the visualiser
+visualizer.show()  
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:43.159009Z","iopub.execute_input":"2023-03-26T20:46:43.159842Z","iopub.status.idle":"2023-03-26T20:46:52.115736Z","shell.execute_reply.started":"2023-03-26T20:46:43.159789Z","shell.execute_reply":"2023-03-26T20:46:52.114574Z"}}
+# 4 clusters
+k=4
+# Init KMeans clustering model and visualiser
+km =  KMeans(k, random_state=1)
+visualizer = SilhouetteVisualizer(km, colors='yellowbrick')
+visualizer.fit(X_cluster1)        # Fit the data to the visualiser
+visualizer.show()        # Finalise and render the figure
+print(visualizer.silhouette_score_)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:52.117336Z","iopub.execute_input":"2023-03-26T20:46:52.117671Z","iopub.status.idle":"2023-03-26T20:46:52.131072Z","shell.execute_reply.started":"2023-03-26T20:46:52.117637Z","shell.execute_reply":"2023-03-26T20:46:52.130019Z"}}
+df_cluster3 = df[['Education_Level','IncomeLevel']]
+df_cluster3.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:52.132665Z","iopub.execute_input":"2023-03-26T20:46:52.133121Z","iopub.status.idle":"2023-03-26T20:46:52.161596Z","shell.execute_reply.started":"2023-03-26T20:46:52.133075Z","shell.execute_reply":"2023-03-26T20:46:52.160423Z"}}
+X_cluster2 = pd.get_dummies(df_cluster3) #OneHot Encoding. 
+X_cluster2.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:52.163088Z","iopub.execute_input":"2023-03-26T20:46:52.163504Z","iopub.status.idle":"2023-03-26T20:46:52.169141Z","shell.execute_reply.started":"2023-03-26T20:46:52.163468Z","shell.execute_reply":"2023-03-26T20:46:52.167699Z"}}
+km = KMeans(n_clusters=4)  
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:52.171138Z","iopub.execute_input":"2023-03-26T20:46:52.171593Z","iopub.status.idle":"2023-03-26T20:46:53.351406Z","shell.execute_reply.started":"2023-03-26T20:46:52.171545Z","shell.execute_reply":"2023-03-26T20:46:53.350066Z"}}
+# fitting data to sluster and creating cluster df
+y_cluster = km.fit_predict(X_cluster2)
+print(y_cluster[0:13])
+df_cluster3['ClusterLabel'] = y_cluster 
+df_cluster3.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:53.353097Z","iopub.execute_input":"2023-03-26T20:46:53.354265Z","iopub.status.idle":"2023-03-26T20:46:53.760566Z","shell.execute_reply.started":"2023-03-26T20:46:53.354212Z","shell.execute_reply":"2023-03-26T20:46:53.759321Z"}}
+sns.countplot(data=df_cluster3, x="ClusterLabel", hue="Education_Level")
+plt.legend(bbox_to_anchor=(1.0, 1.0))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:53.762390Z","iopub.execute_input":"2023-03-26T20:46:53.763141Z","iopub.status.idle":"2023-03-26T20:46:54.352164Z","shell.execute_reply.started":"2023-03-26T20:46:53.763093Z","shell.execute_reply":"2023-03-26T20:46:54.350851Z"}}
+sns.countplot(data=df_cluster3, x="ClusterLabel", hue="IncomeLevel")
+plt.legend(bbox_to_anchor=(1.0, 1.0))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:46:54.354036Z","iopub.execute_input":"2023-03-26T20:46:54.354803Z","iopub.status.idle":"2023-03-26T20:47:04.641472Z","shell.execute_reply.started":"2023-03-26T20:46:54.354751Z","shell.execute_reply":"2023-03-26T20:47:04.640181Z"}}
+model = KMeans()
+visualizer = KElbowVisualizer(model, k=(2,10))
+visualizer.fit(X_cluster2)        # Fit the data to the visualizer
+visualizer.show()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:04.643228Z","iopub.execute_input":"2023-03-26T20:47:04.643682Z","iopub.status.idle":"2023-03-26T20:47:13.564500Z","shell.execute_reply.started":"2023-03-26T20:47:04.643639Z","shell.execute_reply":"2023-03-26T20:47:13.562759Z"}}
+#4 clusters
+k=4
+# Init KMeans clustering model and visualiser
+km =  KMeans(k, random_state=1)
+visualizer = SilhouetteVisualizer(km, colors='yellowbrick')
+visualizer.fit(X_cluster2)        # Fit the data to the visualiser
+visualizer.show()        # Finalise and render the figure
+print(visualizer.silhouette_score_)
+
+# %% [markdown]
+# Prediction - Classification
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:13.566892Z","iopub.execute_input":"2023-03-26T20:47:13.568304Z","iopub.status.idle":"2023-03-26T20:47:13.616509Z","shell.execute_reply.started":"2023-03-26T20:47:13.568232Z","shell.execute_reply":"2023-03-26T20:47:13.615289Z"}}
+df_1 = df[['Hours_Learning','Months_Programming','Age','Relocate','Area','Race','Education_Level','IncomeLevel','HighIncome']]
+encoded_df = pd.get_dummies(df_1)
+encoded_df.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:13.618005Z","iopub.execute_input":"2023-03-26T20:47:13.618328Z","iopub.status.idle":"2023-03-26T20:47:13.645239Z","shell.execute_reply.started":"2023-03-26T20:47:13.618298Z","shell.execute_reply":"2023-03-26T20:47:13.643908Z"}}
+encoded_df = encoded_df[[i for i in encoded_df if i not in ['HighIncome']] + ['HighIncome']]
+encoded_df.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:13.646659Z","iopub.execute_input":"2023-03-26T20:47:13.647607Z","iopub.status.idle":"2023-03-26T20:47:13.656049Z","shell.execute_reply.started":"2023-03-26T20:47:13.647567Z","shell.execute_reply":"2023-03-26T20:47:13.654747Z"}}
+X = encoded_df.iloc[:,0:29]
+y = encoded_df.iloc[:,29]
+print(y)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:13.657696Z","iopub.execute_input":"2023-03-26T20:47:13.658117Z","iopub.status.idle":"2023-03-26T20:47:13.673504Z","shell.execute_reply.started":"2023-03-26T20:47:13.658084Z","shell.execute_reply":"2023-03-26T20:47:13.672384Z"}}
+X_train, X_test, y_train, y_test = model_selection.train_test_split(X,y,test_size=0.3,random_state=4)
+
+X_train_new, X_val, y_train_new, y_val = model_selection.train_test_split(X_train, y_train, test_size=0.2, random_state=4)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:13.674898Z","iopub.execute_input":"2023-03-26T20:47:13.675239Z","iopub.status.idle":"2023-03-26T20:47:13.693536Z","shell.execute_reply.started":"2023-03-26T20:47:13.675207Z","shell.execute_reply":"2023-03-26T20:47:13.692561Z"}}
+#Normilasation
+scaler = MinMaxScaler() 
+scaler.fit(X_train)
+X_train = scaler.transform(X_train) 
+X_test = scaler.transform(X_test)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:13.695177Z","iopub.execute_input":"2023-03-26T20:47:13.695617Z","iopub.status.idle":"2023-03-26T20:47:13.712294Z","shell.execute_reply.started":"2023-03-26T20:47:13.695570Z","shell.execute_reply":"2023-03-26T20:47:13.711167Z"}}
+#KNN mETHOD
+knn = KNeighborsClassifier(n_neighbors=1,weights="uniform", metric="euclidean")
+knn.fit(X_train, y_train)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:13.713755Z","iopub.execute_input":"2023-03-26T20:47:13.714158Z","iopub.status.idle":"2023-03-26T20:47:14.641966Z","shell.execute_reply.started":"2023-03-26T20:47:13.714125Z","shell.execute_reply":"2023-03-26T20:47:14.640836Z"}}
+#prediction and accuracy
+y_predict = knn.predict(X_test) 
+accuracy = accuracy_score(y_test, y_predict)
+print(accuracy) 
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:14.643429Z","iopub.execute_input":"2023-03-26T20:47:14.643761Z","iopub.status.idle":"2023-03-26T20:47:15.890367Z","shell.execute_reply.started":"2023-03-26T20:47:14.643730Z","shell.execute_reply":"2023-03-26T20:47:15.889141Z"}}
+plot_confusion_matrix(knn, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [markdown]
+# KNN - manually hypertuning with holdout method
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:15.891760Z","iopub.execute_input":"2023-03-26T20:47:15.892155Z","iopub.status.idle":"2023-03-26T20:47:15.897200Z","shell.execute_reply.started":"2023-03-26T20:47:15.892118Z","shell.execute_reply":"2023-03-26T20:47:15.895939Z"}}
+val_results = []
+train_results = [] 
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:15.898848Z","iopub.execute_input":"2023-03-26T20:47:15.899572Z","iopub.status.idle":"2023-03-26T20:47:15.913020Z","shell.execute_reply.started":"2023-03-26T20:47:15.899522Z","shell.execute_reply":"2023-03-26T20:47:15.911617Z"}}
+k_range = range(1, 31) 
+print("k range", k_range)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:47:15.914772Z","iopub.execute_input":"2023-03-26T20:47:15.915163Z","iopub.status.idle":"2023-03-26T20:48:39.085406Z","shell.execute_reply.started":"2023-03-26T20:47:15.915126Z","shell.execute_reply":"2023-03-26T20:48:39.084274Z"}}
+for k in k_range:
+    clf_knn1 = KNeighborsClassifier(n_neighbors=k)
+    clf_knn1 = clf_knn1.fit(X_train_new, y_train_new)
+    #accuracy on training data
+    pred_train_new = clf_knn1.predict(X_train_new)
+    train_score = metrics.accuracy_score(y_train_new, pred_train_new) 
+    train_results.append(train_score)
+    #accuracy on validation data
+    pred_val = clf_knn1.predict(X_val) 
+    val_score = metrics.accuracy_score(y_val, pred_val) 
+    val_results.append(val_score) 
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:48:39.086649Z","iopub.execute_input":"2023-03-26T20:48:39.087205Z","iopub.status.idle":"2023-03-26T20:48:39.364127Z","shell.execute_reply.started":"2023-03-26T20:48:39.087167Z","shell.execute_reply":"2023-03-26T20:48:39.362620Z"}}
+plt.plot(k_range, val_results, 'b-', label='Val score')
+plt.plot(k_range, train_results, 'r-', label='Train score') 
+plt.ylabel('Score')
+plt.xlabel('k')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:48:39.366066Z","iopub.execute_input":"2023-03-26T20:48:39.367195Z","iopub.status.idle":"2023-03-26T20:48:40.870538Z","shell.execute_reply.started":"2023-03-26T20:48:39.367145Z","shell.execute_reply":"2023-03-26T20:48:40.869191Z"}}
+clf_knn_best1 = KNeighborsClassifier(n_neighbors=13)
+clf_knn_best1 = clf_knn_best1.fit(X_train, y_train)
+y_pred = clf_knn_best1.predict(X_test)
+print(metrics.accuracy_score(y_test, y_pred))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:48:40.872108Z","iopub.execute_input":"2023-03-26T20:48:40.872442Z","iopub.status.idle":"2023-03-26T20:48:40.877729Z","shell.execute_reply.started":"2023-03-26T20:48:40.872408Z","shell.execute_reply":"2023-03-26T20:48:40.876581Z"}}
+print("best model:", clf_knn_best1.get_params())
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:48:40.879217Z","iopub.execute_input":"2023-03-26T20:48:40.879639Z","iopub.status.idle":"2023-03-26T20:48:42.770159Z","shell.execute_reply.started":"2023-03-26T20:48:40.879592Z","shell.execute_reply":"2023-03-26T20:48:42.768881Z"}}
+plot_confusion_matrix(clf_knn_best1, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [markdown]
+# Hypertuning with grid view method
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:48:42.771612Z","iopub.execute_input":"2023-03-26T20:48:42.771993Z","iopub.status.idle":"2023-03-26T20:48:42.778779Z","shell.execute_reply.started":"2023-03-26T20:48:42.771948Z","shell.execute_reply":"2023-03-26T20:48:42.777529Z"}}
+clf_knn3 = KNeighborsClassifier() 
+#Parameter grid
+param_grid = [{'weights':['uniform'], 'n_neighbors':list(range(1,30))},
+               {'weights':['distance'], 'n_neighbors':list(range(1,30))}]
+print(param_grid)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:48:42.780667Z","iopub.execute_input":"2023-03-26T20:48:42.781088Z","iopub.status.idle":"2023-03-26T20:48:42.794584Z","shell.execute_reply.started":"2023-03-26T20:48:42.781049Z","shell.execute_reply":"2023-03-26T20:48:42.793363Z"}}
+X_train,X_test,y_train,y_test = model_selection.train_test_split(X,y,test_size=0.3,random_state=4)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:48:42.796225Z","iopub.execute_input":"2023-03-26T20:48:42.797478Z","iopub.status.idle":"2023-03-26T20:51:56.223702Z","shell.execute_reply.started":"2023-03-26T20:48:42.797436Z","shell.execute_reply":"2023-03-26T20:51:56.222509Z"}}
+# create a grid search object 
+gridsearch = GridSearchCV(clf_knn3, param_grid, scoring='accuracy', cv=10)                          
+# fit model using grid search
+gridsearch = gridsearch.fit(X_train,y_train)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:51:56.225219Z","iopub.execute_input":"2023-03-26T20:51:56.225667Z","iopub.status.idle":"2023-03-26T20:51:56.239604Z","shell.execute_reply.started":"2023-03-26T20:51:56.225620Z","shell.execute_reply":"2023-03-26T20:51:56.238373Z"}}
+clf_best = gridsearch.best_estimator_
+print("best model:", clf_best.get_params())
+
+# Fit the best model to the data. 
+clf_best.fit(X_train, y_train)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:51:56.241642Z","iopub.execute_input":"2023-03-26T20:51:56.242116Z","iopub.status.idle":"2023-03-26T20:51:57.507231Z","shell.execute_reply.started":"2023-03-26T20:51:56.242067Z","shell.execute_reply":"2023-03-26T20:51:57.506328Z"}}
+y_pred = clf_best.predict(X_test)
+print(metrics.accuracy_score(y_test, y_pred))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:51:57.508593Z","iopub.execute_input":"2023-03-26T20:51:57.509801Z","iopub.status.idle":"2023-03-26T20:51:59.083173Z","shell.execute_reply.started":"2023-03-26T20:51:57.509759Z","shell.execute_reply":"2023-03-26T20:51:59.081908Z"}}
+plot_confusion_matrix(clf_best, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [markdown]
+# bagging
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:51:59.084934Z","iopub.execute_input":"2023-03-26T20:51:59.085704Z","iopub.status.idle":"2023-03-26T20:51:59.091230Z","shell.execute_reply.started":"2023-03-26T20:51:59.085661Z","shell.execute_reply":"2023-03-26T20:51:59.089952Z"}}
+# Creating KNN and bagging it
+clf_knn = KNeighborsClassifier()
+clf_bag = BaggingClassifier(base_estimator=clf_knn,
+                            n_estimators=11,
+                            random_state=1)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:51:59.092676Z","iopub.execute_input":"2023-03-26T20:51:59.093236Z","iopub.status.idle":"2023-03-26T20:52:47.870057Z","shell.execute_reply.started":"2023-03-26T20:51:59.093188Z","shell.execute_reply":"2023-03-26T20:52:47.868876Z"}}
+clf_bag = clf_bag.fit(X_train, y_train)
+y_train_pred = clf_bag.predict(X_train)
+y_test_pred = clf_bag.predict(X_test)
+bag_train = accuracy_score(y_train, y_train_pred)
+bag_test = accuracy_score(y_test, y_test_pred)
+print('Bagging train/test accuracies %.3f/%.3f'% (bag_train, bag_test))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:47.871502Z","iopub.execute_input":"2023-03-26T20:52:47.871871Z","iopub.status.idle":"2023-03-26T20:52:49.410093Z","shell.execute_reply.started":"2023-03-26T20:52:47.871836Z","shell.execute_reply":"2023-03-26T20:52:49.408877Z"}}
+plot_confusion_matrix(clf_best, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [markdown]
+# Decision Tree
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:49.412166Z","iopub.execute_input":"2023-03-26T20:52:49.412651Z","iopub.status.idle":"2023-03-26T20:52:49.427518Z","shell.execute_reply.started":"2023-03-26T20:52:49.412601Z","shell.execute_reply":"2023-03-26T20:52:49.425986Z"}}
+X_train, X_test, y_train, y_test = model_selection.train_test_split(X,y,test_size=0.3,random_state=4)
+
+X_train_new, X_val, y_train_new, y_val = model_selection.train_test_split(X_train, y_train, test_size=0.2, random_state=4)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:49.429106Z","iopub.execute_input":"2023-03-26T20:52:49.430124Z","iopub.status.idle":"2023-03-26T20:52:49.449248Z","shell.execute_reply.started":"2023-03-26T20:52:49.430081Z","shell.execute_reply":"2023-03-26T20:52:49.448084Z"}}
+clf = DecisionTreeClassifier(criterion='gini',max_depth=3)
+clf = clf.fit(X_train,y_train) 
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:49.451856Z","iopub.execute_input":"2023-03-26T20:52:49.453125Z","iopub.status.idle":"2023-03-26T20:52:49.462798Z","shell.execute_reply.started":"2023-03-26T20:52:49.453082Z","shell.execute_reply":"2023-03-26T20:52:49.461782Z"}}
+y_pred = clf.predict(X_test) 
+print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:49.464634Z","iopub.execute_input":"2023-03-26T20:52:49.465006Z","iopub.status.idle":"2023-03-26T20:52:49.743499Z","shell.execute_reply.started":"2023-03-26T20:52:49.464970Z","shell.execute_reply":"2023-03-26T20:52:49.742216Z"}}
+plot_confusion_matrix(clf, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [markdown]
+# Hold out method
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:49.745263Z","iopub.execute_input":"2023-03-26T20:52:49.745743Z","iopub.status.idle":"2023-03-26T20:52:49.751554Z","shell.execute_reply.started":"2023-03-26T20:52:49.745702Z","shell.execute_reply":"2023-03-26T20:52:49.750103Z"}}
+max_depth_range = range(1, 16) 
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:49.753791Z","iopub.execute_input":"2023-03-26T20:52:49.754171Z","iopub.status.idle":"2023-03-26T20:52:49.764499Z","shell.execute_reply.started":"2023-03-26T20:52:49.754136Z","shell.execute_reply":"2023-03-26T20:52:49.763511Z"}}
+#create two lists which record results
+val_result = []
+train_result = []
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:49.765670Z","iopub.execute_input":"2023-03-26T20:52:49.766019Z","iopub.status.idle":"2023-03-26T20:52:49.974161Z","shell.execute_reply.started":"2023-03-26T20:52:49.765984Z","shell.execute_reply":"2023-03-26T20:52:49.972877Z"}}
+for k in max_depth_range:
+    clf_dt = DecisionTreeClassifier(criterion='gini',max_depth=k)
+    clf_dt = clf_dt.fit(X_train_new, y_train_new)
+    #accuracy on training
+    pred_train_new = clf_dt.predict(X_train_new)
+    train_score = metrics.accuracy_score(y_train_new, pred_train_new) 
+    train_result.append(train_score)
+    #accuracy on validation data
+    pred_val = clf_dt.predict(X_val) 
+    val_score = metrics.accuracy_score(y_val, pred_val) 
+    val_result.append(val_score)
+    
+print(val_results)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:49.975463Z","iopub.execute_input":"2023-03-26T20:52:49.975799Z","iopub.status.idle":"2023-03-26T20:52:50.172635Z","shell.execute_reply.started":"2023-03-26T20:52:49.975766Z","shell.execute_reply":"2023-03-26T20:52:50.171101Z"}}
+plt.plot(max_depth_range, val_result, 'g-', label='Val score')
+plt.plot(max_depth_range, train_result, 'r-', label='Train score')
+plt.ylabel('Score')
+plt.xlabel('Model complexity: tree depth')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:50.174208Z","iopub.execute_input":"2023-03-26T20:52:50.174564Z","iopub.status.idle":"2023-03-26T20:52:50.195936Z","shell.execute_reply.started":"2023-03-26T20:52:50.174530Z","shell.execute_reply":"2023-03-26T20:52:50.194337Z"}}
+clf_dt_best1 = DecisionTreeClassifier(max_depth=2)
+clf_dt_best1 = clf_dt_best1.fit(X_train, y_train)
+y_pred = clf_dt_best1.predict(X_test)
+print(metrics.accuracy_score(y_test, y_pred))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:50.197958Z","iopub.execute_input":"2023-03-26T20:52:50.198345Z","iopub.status.idle":"2023-03-26T20:52:50.475176Z","shell.execute_reply.started":"2023-03-26T20:52:50.198292Z","shell.execute_reply":"2023-03-26T20:52:50.474217Z"}}
+plot_confusion_matrix(clf_dt, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:50.476768Z","iopub.execute_input":"2023-03-26T20:52:50.478714Z","iopub.status.idle":"2023-03-26T20:52:50.787623Z","shell.execute_reply.started":"2023-03-26T20:52:50.478668Z","shell.execute_reply":"2023-03-26T20:52:50.786285Z"}}
+fig = plt.figure(figsize=(12, 10)) #plot the decision tree
+_ = tree.plot_tree(clf_dt_best1, feature_names=X.columns, class_names=["Low", "High"],  filled=True)
+
+# %% [markdown]
+# grid search
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:50.788933Z","iopub.execute_input":"2023-03-26T20:52:50.789871Z","iopub.status.idle":"2023-03-26T20:52:54.479181Z","shell.execute_reply.started":"2023-03-26T20:52:50.789793Z","shell.execute_reply":"2023-03-26T20:52:54.477920Z"}}
+# create Decision Tree classifer object
+clf_dt_3 = DecisionTreeClassifier() 
+param_grid = [{'criterion':['gini'], 'max_depth':list(range(1,16))},
+               {'criterion':['entropy'], 'max_depth':list(range(1,16))}]
+# create a grid search object 
+gs = GridSearchCV(clf_dt_3, param_grid, scoring='accuracy', cv=10)                          
+# fit model using grid search
+gs = gs.fit(X_train,y_train)
+ 
+#set the clf to the best combination of parameters
+clf_dt_best = gs.best_estimator_
+print("best model:",clf_dt_best.get_params())
+# Fit the best model to the data. 
+clf_dt_best = clf_dt_best.fit(X_train, y_train)
+
+y_pred = clf_dt_best.predict(X_test)
+print(metrics.accuracy_score(y_test, y_pred))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:54.480758Z","iopub.execute_input":"2023-03-26T20:52:54.481139Z","iopub.status.idle":"2023-03-26T20:52:54.749323Z","shell.execute_reply.started":"2023-03-26T20:52:54.481103Z","shell.execute_reply":"2023-03-26T20:52:54.748114Z"}}
+plot_confusion_matrix(clf_dt_best, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:54.750959Z","iopub.execute_input":"2023-03-26T20:52:54.751858Z","iopub.status.idle":"2023-03-26T20:52:55.054513Z","shell.execute_reply.started":"2023-03-26T20:52:54.751785Z","shell.execute_reply":"2023-03-26T20:52:55.053363Z"}}
+fig = plt.figure(figsize=(12, 10)) #plot the decision tree
+_ = tree.plot_tree(clf_dt_best, feature_names=X.columns, class_names=["Low", "High"],  filled=True)
+
+# %% [markdown]
+# Logistic
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:55.056118Z","iopub.execute_input":"2023-03-26T20:52:55.057434Z","iopub.status.idle":"2023-03-26T20:52:55.074832Z","shell.execute_reply.started":"2023-03-26T20:52:55.057381Z","shell.execute_reply":"2023-03-26T20:52:55.073764Z"}}
+#normalisation
+scaler = MinMaxScaler() 
+scaler.fit(X_train)
+X_train = scaler.transform(X_train) 
+X_test = scaler.transform(X_test)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:55.078156Z","iopub.execute_input":"2023-03-26T20:52:55.078633Z","iopub.status.idle":"2023-03-26T20:52:55.241932Z","shell.execute_reply.started":"2023-03-26T20:52:55.078584Z","shell.execute_reply":"2023-03-26T20:52:55.240175Z"}}
+model = LogisticRegression()
+model.fit(X_train, y_train)
+result = model.score(X_test, y_test)
+print("Accuracy: %.2f%%" % (result*100.0))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:55.244053Z","iopub.execute_input":"2023-03-26T20:52:55.244916Z","iopub.status.idle":"2023-03-26T20:52:55.588469Z","shell.execute_reply.started":"2023-03-26T20:52:55.244852Z","shell.execute_reply":"2023-03-26T20:52:55.587291Z"}}
+plot_confusion_matrix(model, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [markdown]
+# Logistic regression with grid search
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:55.589933Z","iopub.execute_input":"2023-03-26T20:52:55.590262Z","iopub.status.idle":"2023-03-26T20:52:56.405426Z","shell.execute_reply.started":"2023-03-26T20:52:55.590228Z","shell.execute_reply":"2023-03-26T20:52:56.404073Z"}}
+#parameter grid and lr model
+params = {'penalty': ["l2"]}
+lr = LogisticRegression(solver='lbfgs', max_iter=1000)
+grid = GridSearchCV(lr, params, cv=5)
+grid.fit(X_train, y_train)
+print(grid.best_params_)
+print(grid.best_score_)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:56.407086Z","iopub.execute_input":"2023-03-26T20:52:56.407935Z","iopub.status.idle":"2023-03-26T20:52:56.750003Z","shell.execute_reply.started":"2023-03-26T20:52:56.407883Z","shell.execute_reply":"2023-03-26T20:52:56.749141Z"}}
+plot_confusion_matrix(grid, X_test, y_test,cmap=plt.cm.Blues)
+
+# %% [markdown]
+# Ensemble
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:56.751079Z","iopub.execute_input":"2023-03-26T20:52:56.752026Z","iopub.status.idle":"2023-03-26T20:52:56.763324Z","shell.execute_reply.started":"2023-03-26T20:52:56.751989Z","shell.execute_reply":"2023-03-26T20:52:56.762227Z"}}
+X_train, X_test, y_train, y_test = model_selection.train_test_split(X,y,test_size=0.3,random_state=4)
+
+X_train_new, X_val, y_train_new, y_val = model_selection.train_test_split(X_train, y_train, test_size=0.2, random_state=4)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:52:56.764772Z","iopub.execute_input":"2023-03-26T20:52:56.765160Z","iopub.status.idle":"2023-03-26T20:52:56.787908Z","shell.execute_reply.started":"2023-03-26T20:52:56.765125Z","shell.execute_reply":"2023-03-26T20:52:56.786668Z"}}
+#normalisation
+scaler = MinMaxScaler() 
+scaler.fit(X_train)
+X_train = scaler.transform(X_train) 
+X_test = scaler.transform(X_test)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:53:34.750302Z","iopub.execute_input":"2023-03-26T20:53:34.751514Z","iopub.status.idle":"2023-03-26T20:53:34.758135Z","shell.execute_reply.started":"2023-03-26T20:53:34.751465Z","shell.execute_reply":"2023-03-26T20:53:34.756703Z"}}
+dtmodel = DecisionTreeClassifier()
+knnmodel = KNeighborsClassifier()
+lrmodel= LogisticRegression(max_iter=10000)
+clf_ensemble = VotingClassifier(estimators=[('dt', dtmodel), ('knn', knnmodel), ('lr', lrmodel)], voting='hard')
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:53:38.906077Z","iopub.execute_input":"2023-03-26T20:53:38.906482Z","iopub.status.idle":"2023-03-26T20:53:38.926887Z","shell.execute_reply.started":"2023-03-26T20:53:38.906445Z","shell.execute_reply":"2023-03-26T20:53:38.925705Z"}}
+#decision tree
+dtmodel = dtmodel.fit(X_train, y_train)
+y_train_pred = dtmodel.predict(X_train)
+y_test_pred = dtmodel.predict(X_test) 
+train_score = accuracy_score(y_train, y_train_pred)
+test_score = accuracy_score(y_test, y_test_pred)
+print('train/test accuracies %.3f/%.3f' % (train_score, test_score))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:53:42.866493Z","iopub.execute_input":"2023-03-26T20:53:42.867570Z","iopub.status.idle":"2023-03-26T20:53:47.877268Z","shell.execute_reply.started":"2023-03-26T20:53:42.867530Z","shell.execute_reply":"2023-03-26T20:53:47.875698Z"}}
+#knn
+knnmodel = knnmodel.fit(X_train, y_train)
+y_train_pred = knnmodel.predict(X_train)
+y_test_pred = knnmodel.predict(X_test) 
+train_score = accuracy_score(y_train, y_train_pred)
+test_score = accuracy_score(y_test, y_test_pred)
+print('train/test accuracies %.3f/%.3f' % (train_score, test_score))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:53:51.512851Z","iopub.execute_input":"2023-03-26T20:53:51.513271Z","iopub.status.idle":"2023-03-26T20:53:51.682079Z","shell.execute_reply.started":"2023-03-26T20:53:51.513235Z","shell.execute_reply":"2023-03-26T20:53:51.680420Z"}}
+#lr
+lrmodel = lrmodel.fit(X_train, y_train)
+y_train_pred = lrmodel.predict(X_train)
+y_test_pred = lrmodel.predict(X_test) 
+train_score = accuracy_score(y_train, y_train_pred)
+test_score = accuracy_score(y_test, y_test_pred)
+print('train/test accuracies %.3f/%.3f' % (train_score, test_score))
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:53:54.847171Z","iopub.execute_input":"2023-03-26T20:53:54.847968Z","iopub.status.idle":"2023-03-26T20:53:55.128570Z","shell.execute_reply.started":"2023-03-26T20:53:54.847927Z","shell.execute_reply":"2023-03-26T20:53:55.127043Z"}}
+# ensmeble model
+clf_ensemble = clf_ensemble.fit(X_train, y_train)
+
+# %% [code] {"execution":{"iopub.status.busy":"2023-03-26T20:54:00.756936Z","iopub.execute_input":"2023-03-26T20:54:00.757365Z","iopub.status.idle":"2023-03-26T20:54:06.009805Z","shell.execute_reply.started":"2023-03-26T20:54:00.757327Z","shell.execute_reply":"2023-03-26T20:54:06.008103Z"}}
+y_train_pred = clf_ensemble.predict(X_train)
+y_test_pred = clf_ensemble.predict(X_test) 
+train_score = accuracy_score(y_train, y_train_pred)
+test_score = accuracy_score(y_test, y_test_pred)
+print('train/test accuracies %.3f/%.3f' % (train_score, test_score))
